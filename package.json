@@ -1,0 +1,27 @@
+{
+  "name": "board-explorer",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node_modules/.bin/webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReedKrawiec/Board-Explorer.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ReedKrawiec/Board-Explorer/issues"
+  },
+  "homepage": "https://github.com/ReedKrawiec/Board-Explorer#readme",
+  "dependencies": {
+    "@tensorflow/tfjs": "^3.12.0",
+    "@types/chrome": "^0.0.171"
+  },
+  "devDependencies": {
+    "webpack": "^5.65.0",
+    "webpack-cli": "^4.9.1"
+  }
+}
