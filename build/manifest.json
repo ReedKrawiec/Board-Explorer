@@ -19,5 +19,9 @@
       "matches": ["https://www.youtube.com/*"],
       "js": ["content-script.js"]
     }
-  ]
+  ],
+  "web_accessible_resources": [{
+    "resources":["my-model.json","my-model.weights.bin"],
+    "matches":["<all_urls>"]
+  }]
 }
