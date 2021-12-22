@@ -1,10 +1,14 @@
 const path = require('path');
 
 module.exports = {
-  entry: './src/content-script.ts',
-  mode: 'production',
+  entry: {
+      "content-script": './src/content-script.ts',
+      "background": './src/background.ts'
+  },
+  mode: 'development',
+  devtool: "source-map",
   output: {
-    filename: 'content-script.js',
+    filename: '[name].js',
     path: path.resolve(__dirname, 'dist'),
    clean: true,
   },
