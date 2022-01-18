@@ -5,5 +5,7 @@
     "removeComments": true,
     "preserveConstEnums": true,
     "sourceMap": true,
+    "target": "ES6",
+    "experimentalDecorators": true
   }
 }

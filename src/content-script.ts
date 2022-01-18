@@ -1,25 +1,87 @@
 import * as tf from '@tensorflow/tfjs';
-const [imagewidth, imageheight] = [1920, 1200]
-const [screenWidth,screenHeight] = [1920,1200];
-const gutterHeight = (screenWidth - document.body.clientHeight) / 2;
+import { Chessground} from 'chessground';
+import { Color, Key } from 'chessground/types';
+// @ts-ignore
+import * as Chess from "chess.js";
+const box = document.body.getBoundingClientRect();
+const [imagewidth, imageheight] = [box.width, box.height];
+//const [screenWidth,screenHeight] = [box.width, ];
+const gutterHeight = (imagewidth - document.body.getBoundingClientRect().height) / 2;
 
-const cover = document.createElement("div");
-cover.id = "board";
-cover.style.border = "solid 10px black";
-cover.style.position = "absolute";
+console.log(`gutter:${gutterHeight}`);
+console.log(document.body.clientHeight)
+console.log(document.body.getBoundingClientRect().height);
 
-document.body.appendChild(cover);
+let cover: HTMLElement;
 
+let already = false;
 
+let cg:any;
+
+export function toColor(chess: any): Color {
+    return (chess.turn() === 'w') ? 'white' : 'black';
+  
+  }
+
+export function playOtherSide(cg: any, chess:any) {
+    return (orig:any, dest:any) => {
+      chess.move({from: orig, to: dest});
+      cg.set({
+        turnColor: toColor(chess),
+        movable: {
+          color: toColor(chess),
+          dests: toDests(chess)
+        }
+      });
+    };
+  }
+
+function toDests(chess: any): Map<Key, Key[]> {
+    const dests = new Map();
+    chess.SQUARES.forEach((s:any) => {
+      const ms = chess.moves({square: s, verbose: true});
+      if (ms.length) dests.set(s, ms.map((m:any) => m.to));
+    });
+    return dests;
+  }
 
 chrome.runtime.onMessage.addListener(async (data, sender) => {
-    const {fen,board_info} = data;
-    console.log(board_info)
-    const boardSize = board_info.width * screenWidth;
-    cover.style.width = boardSize + "px";
-    cover.style.height = boardSize + "px";
-    cover.style.left = board_info.x * screenWidth - boardSize/2 + "px";
-    cover.style.top = board_info.y * screenWidth - boardSize/2 - gutterHeight + "px";
+    const { fen, board_info } = data;
+    if (!already) {
+        cover = document.createElement("div");
+        cover.id = "board";
+        cover.classList.add("blue");
+        cover.classList.add("meridia")
+        cover.style.border = "solid 2px black";
+        cover.style.position = "absolute";
+        document.body.appendChild(cover);
+        const boardWidth = board_info.width * imagewidth;
+        const boardHeight = board_info.height * imagewidth;
+        cover.style.width = boardWidth + "px";
+        cover.style.height = boardWidth + "px";
+        cover.style.left = board_info.x * imagewidth - boardWidth / 2 + "px";
+        cover.style.top = 0.75 * (board_info.y * imagewidth - boardHeight / 2 - gutterHeight) + "px";
+        already = true;
+        console.log(fen + " w KQkq - 0 1");
+        let chess:any = new Chess(fen +  " w KQkq - 0 1");
+        cg = Chessground(cover, {
+            fen,
+            animation: {
+                duration: 500
+            },
+            draggable:{
+                showGhost: true
+            },
+            movable: {
+                color: 'white',
+                free: false,
+                dests: toDests(chess),
+            }
+        });
+        cg.set({
+            movable: { events: { after: playOtherSide(cg, chess) } }
+          });
+    }
     return true;
 })
 async function main() {
@@ -46,7 +108,7 @@ async function main() {
         ctx.fillStyle = "#000000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         const new_width = 512;
-        const new_height = 512 / imagewidth * imageheight;
+        const new_height = 512 / imagewidth * imageheight * 0.95;
         ctx.drawImage(
             video,
             512 / 2 - new_width / 2,
@@ -61,10 +123,12 @@ async function main() {
         //.div(255.0).expandDims(0);
         const buffer = await blob.arrayBuffer();
         const typed = new Uint8Array(buffer);
-        chrome.runtime.sendMessage({
-            frame: Array.from(typed),
-            counter
-        });
+        if(!already){
+            chrome.runtime.sendMessage({
+                frame: Array.from(typed),
+                counter
+            });
+        }
         counter++;
     }, 2000);
 }

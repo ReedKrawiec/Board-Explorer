@@ -3,22 +3,35 @@ import * as tf from '@tensorflow/tfjs';
 const names = ["LMS", "BOARD", "P", "R", "N", "B", "Q", "K", "p", "r", "n", "b", "q", "k"]
 const [modelWidth, modelHeight] = [512, 512];
 
-async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
+function rgbToHex(r:number, g:number, b:number) {
+    if (r > 255 || g > 255 || b > 255)
+        throw "Invalid color component";
+    return ((r << 16) | (g << 8) | b).toString(16);
+}
 
+function rgbRound(r:number, g:number, b:number) {
+    return [r, g, b].map(x => Math.min(Math.round(x/36) * 36, 255))
+}
+async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
+    const canvas = new OffscreenCanvas(512, 512);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0);
     const input = tf.image.resizeBilinear(tf.browser.fromPixels(image), [512, 512])
         .div(255.0).expandDims(0);
+    console.log(image)
     const res: Array<any> = <Array<any>>await model.executeAsync(input);
     let pieces = [];
-    /*
-    let final:{
-        [index:string]:Array<Array<unknown>>
-    } = {};
-    */
     let final: any = {};
     const boxes = res[0].arraySync()[0];
     const probabilitys = res[1].arraySync()[0];
     const classes = res[2].arraySync()[0];
     const entries = res[3].arraySync()[0];
+    const global_sample_result_map:{
+        [key:string]:{
+            count:number,
+            cords:number[][]
+        }
+    } = {};
     for (let a = 0; a < entries; a++) {
         const class_name = names[classes[a]];
         if (!final[class_name]) {
@@ -45,6 +58,7 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
                 const height = y2 - y1;
                 const klass = key;
                 const score = 1;
+                
                 if (key === "BOARD") {
                     board_info = {
                         x: x1 + width / 2,
@@ -53,14 +67,65 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
                         height
                     }
                 }
-                else if (!["BOARD", "LMS"].includes(key))
+                else if (!["BOARD", "LMS"].includes(key)){
+                    /*
+                    const color_samples = [
+                        {
+                            x: x1 * 512,
+                            y: y1 * 512,
+                        },
+                        {
+                            x: x2 * 512,
+                            y: y1 * 512,
+                        },
+                        {
+                            x: x1 * 512,
+                            y: y2 * 512,
+                        },
+                        {
+                            x: x2 * 512,
+                            y: y2 * 512,
+                        }    
+                    ]
+                    const sample_list:{
+                        [key:string]:{
+                            count:number,
+                            color:string
+                        }
+                    } = {};
+                    for(let sample of color_samples) {
+                        let p = ctx.getImageData(sample.x, sample.y, 1, 1).data;
+                        let q = rgbRound(p[0], p[1], p[2]);
+                        let hex = "#" + rgbToHex(q[0], q[1], q[2]);
+                        let pre = hex.slice(0,2);
+                        if(!sample_list[hex]) {
+                            sample_list[hex] = {
+                                count: 1,
+                                color: hex
+                            }
+                        }
+                        else {
+                            sample_list[hex].count++;
+                        }
+                        if(!global_sample_result_map[hex]){
+                            global_sample_result_map[hex] = {
+                                count: 1,
+                                cords: [[x1,y1,x2,y2]]
+                            };
+                        } else {
+                            global_sample_result_map[hex].cords.push([x1,y1,x2,y2]);
+                        }
+                    }
+                    console.log(sample_list);
+                    */
                     pieces.push({
                         type: key,
                         width,
                         height,
                         x: x1 + width / 2,
                         y: y1 + height / 2
-                    })
+                    })   
+                }
             }
         }
     }
@@ -116,10 +181,12 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
     }
     return { fen, board_info }
 }
+
 async function main() {
     //const response = fetch("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==");
     const url = chrome.runtime.getURL("my-model.json");
     let model = await tf.loadGraphModel(url);
+    const canvas = new OffscreenCanvas(512,512);
     chrome.runtime.onMessage.addListener(async (data, sender) => {
         const typed = new Uint8Array(data.frame);
         const blob = new Blob([typed], {
