@@ -46,7 +46,7 @@ function toDests(chess: any): Map<Key, Key[]> {
   }
 
 chrome.runtime.onMessage.addListener(async (data, sender) => {
-    const { fen, board_info } = data;
+    const { fen, board_info, perspective } = data;
     if (!already) {
         cover = document.createElement("div");
         cover.id = "board";
@@ -66,6 +66,7 @@ chrome.runtime.onMessage.addListener(async (data, sender) => {
         let chess:any = new Chess(fen +  " w KQkq - 0 1");
         cg = Chessground(cover, {
             fen,
+            orientation: perspective == 0 ? "white" : "black",
             animation: {
                 duration: 500
             },

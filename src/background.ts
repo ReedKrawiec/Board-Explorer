@@ -12,6 +12,69 @@ function rgbToHex(r:number, g:number, b:number) {
 function rgbRound(r:number, g:number, b:number) {
     return [r, g, b].map(x => Math.min(Math.round(x/36) * 36, 255))
 }
+
+enum Perspective {
+    white,
+    black,
+}
+
+function getTurn(board:string[][]):Perspective {
+    let whiteKingSide = "top";
+    let blackKingSide = "top"
+    let whitePawns7th = 0;
+    let whitePawns2nd = 0;
+    let blackPawns7th = 0;
+    let blackPawns2nd = 0;
+    for(let y = 0; y < 8; y++) {
+        for(let x = 0; x < 8; x++) {
+            
+            if(board[y][x] == "K") {
+                if(y < 4) {
+                    whiteKingSide = "top";
+                }
+                else {
+                    whiteKingSide = "bottom";
+                }
+            } else if (board[y][x] == "k"){
+                if(y < 4) {
+                    blackKingSide = "top";
+                }
+                else {
+                    blackKingSide = "bottom";
+                }
+            } else if(board[y][x] == "P"){
+                if(y == 6){
+                    whitePawns7th++;
+                } else if(y == 1){
+                    whitePawns2nd++;
+                }
+            } else if(board[y][x] == "p"){
+                if(y == 6){
+                    blackPawns7th++;
+                } else if(y == 1){
+                    blackPawns2nd++;
+                }
+            }
+        }
+    }
+    console.log([whiteKingSide, blackKingSide, whitePawns7th, whitePawns2nd, blackPawns7th, blackPawns2nd].join(" | "));
+    if(whiteKingSide != blackKingSide){
+        if(whiteKingSide == "top")
+            return Perspective.black;
+        return Perspective.white;
+    }
+    if(whitePawns7th > 2 || blackPawns2nd > 2){
+        return Perspective.white;
+    }
+    if(blackPawns7th > 2 || whitePawns2nd > 2){
+        return Perspective.black;
+    }
+    if(blackPawns2nd < whitePawns2nd){
+        return Perspective.black;
+    }
+    return Perspective.white;
+}
+
 async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
     const canvas = new OffscreenCanvas(512, 512);
     const ctx = canvas.getContext("2d");
@@ -156,6 +219,10 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
             board[cords.y][cords.x] = piece.type;
         }
     }
+    let perspective = getTurn(board);
+    if(perspective === Perspective.black) {
+        board = board.map((row)=>row.reverse()).reverse();
+    }
     let fen = ""
     for (let row of board) {
         let tracker = 0;
@@ -179,7 +246,7 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
             fen = `${fen}${tracker}`
         }
     }
-    return { fen, board_info }
+    return { fen, board_info, perspective }
 }
 
 async function main() {
