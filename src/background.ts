@@ -59,8 +59,9 @@ function getTurn(board:string[][]):Perspective {
     }
     console.log([whiteKingSide, blackKingSide, whitePawns7th, whitePawns2nd, blackPawns7th, blackPawns2nd].join(" | "));
     if(whiteKingSide != blackKingSide){
-        if(whiteKingSide == "top")
+        if(whiteKingSide == "top"){
             return Perspective.black;
+        }
         return Perspective.white;
     }
     if(whitePawns7th > 2 || blackPawns2nd > 2){
@@ -223,6 +224,7 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
     if(perspective === Perspective.black) {
         board = board.map((row)=>row.reverse()).reverse();
     }
+    console.log("PERSPEC " + perspective);
     let fen = ""
     for (let row of board) {
         let tracker = 0;
@@ -260,9 +262,9 @@ async function main() {
             type: "image/jpeg"
         });
         const bitmap = await createImageBitmap(blob);
-        const { fen, board_info } = await parseBoardImage(model, bitmap)
+        const { fen, board_info, perspective } = await parseBoardImage(model, bitmap)
         chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, { fen, board_info }, function (response) { });
+            chrome.tabs.sendMessage(tabs[0].id, { fen, board_info, perspective }, function (response) { });
         });
     })
 }

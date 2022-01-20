@@ -22,7 +22,7 @@
         }
     ],
     "web_accessible_resources": [{
-        "resources":["thumb0002.jpg","my-model.json","my-model.weights.bin"],
+        "resources":["stockfish.js","my-model.json","my-model.weights.bin"],
         "matches":["<all_urls>"]
     }]
 }
