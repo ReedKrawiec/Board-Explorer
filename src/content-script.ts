@@ -28,9 +28,30 @@ export function toColor(chess: any): Color {
 
 }
 
-export function playOtherSide(cg: any, chess: any) {
+function evalFen(stockfish:Worker,fen:string, turn:"w"|"b"){
+  stockfish.postMessage("stop");
+  stockfish.postMessage("ucinewgame");
+  stockfish.postMessage("position fen " + fen);
+  stockfish.postMessage("go depth 22");
+  stockfish.onmessage = function (e: any) {
+    const line = e.data;
+    const regex = /.+\scp\s(-*\d+)/;
+    const found = line.match(regex);
+    if (found && found[1]) {
+      let cp = parseInt(found[1]);
+      if (turn === "b") {
+        cp = -cp;
+      }
+      document.getElementById("evaluation").innerHTML = `${cp / 100}`;
+    }
+  }
+}
+
+export function playOtherSide(cg: any, chess: any, stockfish: Worker) {
+  
   return (orig: any, dest: any) => {
     chess.move({ from: orig, to: dest });
+    evalFen(stockfish,chess.fen(),chess.turn()); 
     cg.set({
       turnColor: toColor(chess),
       movable: {
@@ -55,30 +76,7 @@ async function main() {
   blob = new Blob([script], { type: 'application/javascript' });
   var stockfish = new Worker(URL.createObjectURL(blob));
 
-  async function evaluateFen(fen: string):Promise<number> {
-    return new Promise((resolve, reject) => {
-      stockfish.postMessage("uci");
-      // start new game
-      stockfish.postMessage("ucinewgame");
-      stockfish.postMessage("position fen " + fen);
-      // start search
-      stockfish.postMessage("go depth 14");
-      let values: string[] = [];
-      stockfish.onmessage = function (e) {
-        values.push(e.data);
-        if (values.length > 5) {
-          values.shift();
-        }
-        if(values[values.length - 1].indexOf("bestmove") > -1){
-          let line = values[values.length - 2];
-          const regex = /.+\scp\s(\d+)\s.+/;
-          const found = line.match(regex);
-          console.log(line);
-          resolve(parseInt(found[1]));
-        }
-      };
-    });
-  }
+  stockfish.postMessage("uci");
 
   chrome.runtime.onMessage.addListener(async (data, sender) => {
     const { fen, board_info, perspective } = data;
@@ -99,8 +97,7 @@ async function main() {
       already = true;
       let fullFen = `${fen} ${perspective == 0 ? "w" : "b"} - - 0 1`;
       console.log(fullFen);
-      let evaluation:number = await evaluateFen(fullFen) / 100;
-      
+
       let chess: any = new Chess(fullFen);
       cg = Chessground(cover, {
         fen: fullFen,
@@ -119,19 +116,23 @@ async function main() {
         }
       });
       cg.set({
-        movable: { events: { after: playOtherSide(cg, chess) } }
+        movable: { events: { after: playOtherSide(cg, chess, stockfish) } }
       });
+
       let pNode = document.createElement("p");
+      pNode.id = "evaluation";
       pNode.style.position = "absolute";
       pNode.style.top = "0px";
       pNode.style.left = "0px";
-      let textNode = document.createTextNode(`${evaluation}`);
+      let textNode = document.createTextNode("");
       pNode.appendChild(textNode);
       cover.appendChild(pNode);
+
+      evalFen(stockfish,chess.fen(),chess.turn()); 
     }
     return true;
   })
-  
+
   let counter = 0;
 
   // @ts-ignore
