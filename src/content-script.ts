@@ -5,22 +5,21 @@ import { Color, Key } from 'chessground/types';
 // @ts-ignore
 import * as Chess from "chess.js";
 import { EvalSourceMapDevToolPlugin } from 'webpack';
+import { batchGetValue } from '@tensorflow/tfjs-layers/dist/variables';
 const box = document.body.getBoundingClientRect();
 const [imagewidth, imageheight] = [box.width, box.height];
-//const [screenWidth,screenHeight] = [box.width, ];
 const gutterHeight = (imagewidth - document.body.getBoundingClientRect().height) / 2;
 
 console.log(`gutter:${gutterHeight}`);
 console.log(document.body.clientHeight)
 console.log(document.body.getBoundingClientRect().height);
 
-let cover: HTMLElement;
+let hasAlreadyRenderedBoard = false;
+let shouldRenderBoard = false;
+let shouldRenderEval = false;
 
-let already = false;
 
 let cg: any;
-
-
 var blob;
 
 export function toColor(chess: any): Color {
@@ -28,7 +27,27 @@ export function toColor(chess: any): Color {
 
 }
 
-function evalFen(stockfish:Worker,fen:string, turn:"w"|"b"){
+let evalBar = document.createElement("div");
+let bar2 = document.createElement("div");
+evalBar.appendChild(bar2);
+evalBar.style.width = "10px";
+evalBar.style.position = "absolute";
+evalBar.style.display = "flex";
+evalBar.style.backgroundColor = "white";
+evalBar.style.visibility = "hidden";
+bar2.style.width = "100%";
+bar2.style.backgroundColor = "black";
+document.body.appendChild(evalBar);
+
+const board = document.createElement("div");
+board.id = "board";
+board.classList.add("blue");
+board.classList.add("meridia")
+board.style.border = "solid 2px black";
+board.style.position = "absolute";
+document.body.appendChild(board);
+
+function evalFen(stockfish:Worker,fen:string, turn:"w"|"b", func:(cp:number)=>void){
   stockfish.postMessage("stop");
   stockfish.postMessage("ucinewgame");
   stockfish.postMessage("position fen " + fen);
@@ -42,7 +61,7 @@ function evalFen(stockfish:Worker,fen:string, turn:"w"|"b"){
       if (turn === "b") {
         cp = -cp;
       }
-      document.getElementById("evaluation").innerHTML = `${cp / 100}`;
+      func(cp);
     }
   }
 }
@@ -50,9 +69,12 @@ function evalFen(stockfish:Worker,fen:string, turn:"w"|"b"){
 export function playOtherSide(cg: any, chess: any, stockfish: Worker) {
   
   return (orig: any, dest: any) => {
-    chess.move({ from: orig, to: dest });
-    evalFen(stockfish,chess.fen(),chess.turn()); 
+    chess.move({ from: orig, to: dest, promotion: 'q' });
+    evalFen(stockfish,chess.fen(),chess.turn(),()=>{
+
+    });
     cg.set({
+      fen: chess.fen(),
       turnColor: toColor(chess),
       movable: {
         color: toColor(chess),
@@ -64,12 +86,28 @@ export function playOtherSide(cg: any, chess: any, stockfish: Worker) {
 
 function toDests(chess: any): Map<Key, Key[]> {
   const dests = new Map();
-  chess.SQUARES.forEach((s: any) => {
-    const ms = chess.moves({ square: s, verbose: true });
-    if (ms.length) dests.set(s, ms.map((m: any) => m.to));
+  function swapTurn(chess: any) {
+    //console.log(chess.fen());
+    let tokens = chess.fen().split(" ");
+    tokens[1] = chess.turn() === "b" ? "w" : "b";
+    tokens[3] = "-";
+    const new_fen = tokens.join(" ");
+    //console.log(new_fen);
+    chess.load(new_fen);
+  }
+  chess.SQUARES.forEach((square: any) => {
+    let [current,next] = chess.turn() === 'w' ? ["w","b"] : ["b","w"];
+    let ms = chess.moves({ square, verbose: true });
+    swapTurn(chess);
+    ms = [...ms,...chess.moves({ square, verbose: true })];
+    //console.log(ms);
+    if (ms.length) dests.set(square, ms.map ((m: any) => m.to));
+    swapTurn(chess);
   });
   return dests;
 }
+
+
 async function main() {
   const text = await fetch(chrome.runtime.getURL("stockfish.js"));
   const script = await text.text();
@@ -77,29 +115,42 @@ async function main() {
   var stockfish = new Worker(URL.createObjectURL(blob));
 
   stockfish.postMessage("uci");
-
+  
   chrome.runtime.onMessage.addListener(async (data, sender) => {
+    if(data == "eval"){
+      shouldRenderEval = !shouldRenderEval;
+      if(!shouldRenderEval){
+        evalBar.style.visibility = "hidden";
+      }
+      else {
+        evalBar.style.visibility = "visible";
+      }
+      return true;
+    }
+    if(data == "playable"){
+      shouldRenderBoard = !shouldRenderBoard;
+      hasAlreadyRenderedBoard = false;
+      console.log(shouldRenderBoard);
+      if(!shouldRenderBoard){
+        board.style.visibility = "hidden";
+      }
+      return true;
+    }
     const { fen, board_info, perspective } = data;
-    if (!already) {
-      cover = document.createElement("div");
-      cover.id = "board";
-      cover.classList.add("blue");
-      cover.classList.add("meridia")
-      cover.style.border = "solid 2px black";
-      cover.style.position = "absolute";
-      document.body.appendChild(cover);
-      const boardWidth = board_info.width * imagewidth;
-      const boardHeight = board_info.height * imagewidth;
-      cover.style.width = boardWidth + "px";
-      cover.style.height = boardWidth + "px";
-      cover.style.left = board_info.x * imagewidth - boardWidth / 2 + "px";
-      cover.style.top = 0.75 * (board_info.y * imagewidth - boardHeight / 2 - gutterHeight) + "px";
-      already = true;
-      let fullFen = `${fen} ${perspective == 0 ? "w" : "b"} - - 0 1`;
-      console.log(fullFen);
+    let fullFen = `${fen} ${perspective == 0 ? "w" : "b"} - - 0 1`;
+    let chess: any = new Chess(fullFen);
+    const boardWidth = board_info.width * imagewidth;
+    const boardHeight = board_info.height * imagewidth;
+    const top = 0.75 * (board_info.y * imagewidth - boardHeight / 2 - gutterHeight)
+    if (!hasAlreadyRenderedBoard && shouldRenderBoard) {
+      board.style.visibility = "visible";
+      board.style.width = boardWidth + "px";
+      board.style.height = boardWidth + "px";
+      board.style.left = board_info.x * imagewidth - boardWidth / 2 + "px";
+      board.style.top = top + "px";
+      hasAlreadyRenderedBoard = true;
 
-      let chess: any = new Chess(fullFen);
-      cg = Chessground(cover, {
+      cg = Chessground(board, {
         fen: fullFen,
         turnColor: perspective == 0 ? "white" : "black",
         orientation: perspective == 0 ? "white" : "black",
@@ -110,7 +161,7 @@ async function main() {
           showGhost: true
         },
         movable: {
-          color: perspective == 0 ? "white" : "black",
+          color: "both",
           free: false,
           dests: toDests(chess),
         }
@@ -118,18 +169,18 @@ async function main() {
       cg.set({
         movable: { events: { after: playOtherSide(cg, chess, stockfish) } }
       });
-
-      let pNode = document.createElement("p");
-      pNode.id = "evaluation";
-      pNode.style.position = "absolute";
-      pNode.style.top = "0px";
-      pNode.style.left = "0px";
-      let textNode = document.createTextNode("");
-      pNode.appendChild(textNode);
-      cover.appendChild(pNode);
-
-      evalFen(stockfish,chess.fen(),chess.turn()); 
     }
+    evalFen(stockfish,chess.fen(),chess.turn(),(cp)=>{
+      let clamped = Math.min(1000,Math.max(cp,-1000));
+      let regularized = 1 - (clamped + 1000) / 2000;
+      const boardHeight = board_info.height * imagewidth;
+      const right = (imagewidth - (board_info.x * imagewidth - boardWidth / 2))
+      evalBar.style.height = boardHeight + "px";
+      bar2.style.height = regularized * boardHeight + "px";
+      evalBar.style.right = right + "px";
+      evalBar.style.top = top + "px";
+      //document.getElementById("evaluation").innerHTML = `${cp / 100}`;
+    });
     return true;
   })
 
@@ -171,7 +222,7 @@ async function main() {
     //.div(255.0).expandDims(0);
     const buffer = await blob.arrayBuffer();
     const typed = new Uint8Array(buffer);
-    if (!already) {
+    if (!hasAlreadyRenderedBoard) {
       chrome.runtime.sendMessage({
         frame: Array.from(typed),
         counter

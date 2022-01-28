@@ -170,7 +170,10 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
                         }
                         else {
                             sample_list[hex].count++;
-                        }
+          document.querySelector("#eval").addEventListener("click", function() {
+  chrome.runtime.sendMessage("eval");
+  console.log("eval");
+});              }
                         if(!global_sample_result_map[hex]){
                             global_sample_result_map[hex] = {
                                 count: 1,
@@ -257,15 +260,28 @@ async function main() {
     let model = await tf.loadGraphModel(url);
     const canvas = new OffscreenCanvas(512,512);
     chrome.runtime.onMessage.addListener(async (data, sender) => {
-        const typed = new Uint8Array(data.frame);
-        const blob = new Blob([typed], {
-            type: "image/jpeg"
-        });
-        const bitmap = await createImageBitmap(blob);
-        const { fen, board_info, perspective } = await parseBoardImage(model, bitmap)
-        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, { fen, board_info, perspective }, function (response) { });
-        });
+        if(data == "eval"){
+            chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+                chrome.tabs.sendMessage(tabs[0].id, "eval", function (response) { });
+            });
+        }
+        else if (data == "playable"){
+            chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+                chrome.tabs.sendMessage(tabs[0].id, "playable", function (response) { });
+            });
+        }
+        else{
+            const typed = new Uint8Array(data.frame);
+            const blob = new Blob([typed], {
+                type: "image/jpeg"
+            });
+            const bitmap = await createImageBitmap(blob);
+            const { fen, board_info, perspective } = await parseBoardImage(model, bitmap)
+            chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+                chrome.tabs.sendMessage(tabs[0].id, { fen, board_info, perspective }, function (response) { });
+            });
+        }
+        return true;
     })
 }
 main();
