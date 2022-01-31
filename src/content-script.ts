@@ -54,30 +54,53 @@ function evalFen(stockfish:Worker,fen:string, turn:"w"|"b", func:(cp:number)=>vo
   stockfish.postMessage("go depth 22");
   stockfish.onmessage = function (e: any) {
     const line = e.data;
-    const regex = /.+\scp\s(-*\d+)/;
+    const regex = /.+\sdepth\s(\d+).+cp\s(-*\d+)/;
     const found = line.match(regex);
-    if (found && found[1]) {
-      let cp = parseInt(found[1]);
-      if (turn === "b") {
-        cp = -cp;
+    if (found && found[1] && found[2]) {
+      let cp = parseInt(found[2]);
+      let depth = parseInt(found[1]);
+      if(depth > 16){
+        if (turn === "b") {
+          cp = -cp;
+        }
+        func(cp);
       }
-      func(cp);
     }
   }
+}
+
+function swapTurn(chess: any) {
+  //console.log(chess.fen());
+  let tokens = chess.fen().split(" ");
+  tokens[1] = chess.turn() === "b" ? "w" : "b";
+  tokens[3] = "-";
+  const new_fen = tokens.join(" ");
+  //console.log(new_fen);
+  chess.load(new_fen);
 }
 
 export function playOtherSide(cg: any, chess: any, stockfish: Worker) {
   
   return (orig: any, dest: any) => {
-    chess.move({ from: orig, to: dest, promotion: 'q' });
-    evalFen(stockfish,chess.fen(),chess.turn(),()=>{
-
+    const piece = chess.get(orig)
+    if(piece.color !== chess.turn()){
+      swapTurn(chess);
+    }
+    let result = chess.move({ from: orig, to: dest, promotion: 'q' });
+    evalFen(stockfish,chess.fen(),chess.turn(),(cp)=>{
+      
+      let clamped = Math.min(1000,Math.max(cp,-1000));
+      let regularized = 1 - (clamped + 1000) / 2000;
+      console.log(regularized)
+      bar2.style.height = regularized * 100 + "%";
     });
+    
+   const color = piece.color === 'w' ? 'b' : 'w';
     cg.set({
       fen: chess.fen(),
       turnColor: toColor(chess),
       movable: {
-        color: toColor(chess),
+        color:toColor(chess),
         dests: toDests(chess)
       }
     });
@@ -86,27 +109,18 @@ export function playOtherSide(cg: any, chess: any, stockfish: Worker) {
 
 function toDests(chess: any): Map<Key, Key[]> {
   const dests = new Map();
-  function swapTurn(chess: any) {
-    //console.log(chess.fen());
-    let tokens = chess.fen().split(" ");
-    tokens[1] = chess.turn() === "b" ? "w" : "b";
-    tokens[3] = "-";
-    const new_fen = tokens.join(" ");
-    //console.log(new_fen);
-    chess.load(new_fen);
-  }
+  
   chess.SQUARES.forEach((square: any) => {
     let [current,next] = chess.turn() === 'w' ? ["w","b"] : ["b","w"];
     let ms = chess.moves({ square, verbose: true });
     swapTurn(chess);
-    ms = [...ms,...chess.moves({ square, verbose: true })];
-    //console.log(ms);
+    let other = chess.moves({ square, verbose: true });
+    ms = [...ms,...other];
     if (ms.length) dests.set(square, ms.map ((m: any) => m.to));
     swapTurn(chess);
   });
   return dests;
 }
-
 
 async function main() {
   const text = await fetch(chrome.runtime.getURL("stockfish.js"));
@@ -149,10 +163,9 @@ async function main() {
       board.style.left = board_info.x * imagewidth - boardWidth / 2 + "px";
       board.style.top = top + "px";
       hasAlreadyRenderedBoard = true;
-
+      const dests = toDests(chess)
       cg = Chessground(board, {
         fen: fullFen,
-        turnColor: perspective == 0 ? "white" : "black",
         orientation: perspective == 0 ? "white" : "black",
         animation: {
           duration: 500
@@ -163,24 +176,26 @@ async function main() {
         movable: {
           color: "both",
           free: false,
-          dests: toDests(chess),
+          dests
         }
       });
       cg.set({
         movable: { events: { after: playOtherSide(cg, chess, stockfish) } }
       });
+      evalFen(stockfish,chess.fen(),chess.turn(),(cp)=>{
+        let clamped = Math.min(1000,Math.max(cp,-1000));
+        let regularized = 1 - (clamped + 1000) / 2000;
+        const boardHeight = board_info.height * imagewidth;
+        const right = (imagewidth - (board_info.x * imagewidth - boardWidth / 2))
+        evalBar.style.height = boardHeight + "px";
+        console.log(regularized)
+        bar2.style.height = regularized * 100 + "%";
+        evalBar.style.right = right + "px";
+        evalBar.style.top = top + "px";
+        //document.getElementById("evaluation").innerHTML = `${cp / 100}`;
+      });
     }
-    evalFen(stockfish,chess.fen(),chess.turn(),(cp)=>{
-      let clamped = Math.min(1000,Math.max(cp,-1000));
-      let regularized = 1 - (clamped + 1000) / 2000;
-      const boardHeight = board_info.height * imagewidth;
-      const right = (imagewidth - (board_info.x * imagewidth - boardWidth / 2))
-      evalBar.style.height = boardHeight + "px";
-      bar2.style.height = regularized * boardHeight + "px";
-      evalBar.style.right = right + "px";
-      evalBar.style.top = top + "px";
-      //document.getElementById("evaluation").innerHTML = `${cp / 100}`;
-    });
+    
     return true;
   })
 
