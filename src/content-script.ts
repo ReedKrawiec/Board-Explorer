@@ -51,7 +51,7 @@ function evalFen(stockfish:Worker,fen:string, turn:"w"|"b", func:(cp:number)=>vo
   stockfish.postMessage("stop");
   stockfish.postMessage("ucinewgame");
   stockfish.postMessage("position fen " + fen);
-  stockfish.postMessage("go depth 22");
+  stockfish.postMessage("go depth 10");
   stockfish.onmessage = function (e: any) {
     const line = e.data;
     const regex = /.+\sdepth\s(\d+).+cp\s(-*\d+)/;
@@ -122,6 +122,7 @@ function toDests(chess: any): Map<Key, Key[]> {
   return dests;
 }
 
+let last_fen:string;
 async function main() {
   const text = await fetch(chrome.runtime.getURL("stockfish.js"));
   const script = await text.text();
@@ -139,6 +140,7 @@ async function main() {
       else {
         evalBar.style.visibility = "visible";
       }
+      console.log("eval")
       return true;
     }
     if(data == "playable"){
@@ -152,6 +154,16 @@ async function main() {
     }
     const { fen, board_info, perspective } = data;
     let fullFen = `${fen} ${perspective == 0 ? "w" : "b"} - - 0 1`;
+    console.log(fullFen);
+    console.log(last_fen)
+    if(last_fen === fullFen){
+      return;
+    }
+    if(last_fen){
+      //let delta = fenDelta(last_fen,fullFen);
+      //console.log(delta);
+    }
+    last_fen = fullFen;
     let chess: any = new Chess(fullFen);
     const boardWidth = board_info.width * imagewidth;
     const boardHeight = board_info.height * imagewidth;
@@ -244,6 +256,6 @@ async function main() {
       });
     }
     counter++;
-  }, 2000);
+  }, 1000);
 }
 main();
