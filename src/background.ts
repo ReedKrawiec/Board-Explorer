@@ -57,7 +57,6 @@ function getTurn(board:string[][]):Perspective {
             }
         }
     }
-    console.log([whiteKingSide, blackKingSide, whitePawns7th, whitePawns2nd, blackPawns7th, blackPawns2nd].join(" | "));
     if(whiteKingSide != blackKingSide){
         if(whiteKingSide == "top"){
             return Perspective.black;
@@ -76,13 +75,14 @@ function getTurn(board:string[][]):Perspective {
     return Perspective.white;
 }
 
+let last_board:string[][];
+let last_moved_cache:string;
 async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
     const canvas = new OffscreenCanvas(512, 512);
     const ctx = canvas.getContext("2d");
     ctx.drawImage(image, 0, 0);
     const input = tf.image.resizeBilinear(tf.browser.fromPixels(image), [512, 512])
         .div(255.0).expandDims(0);
-    console.log(image)
     const res: Array<any> = <Array<any>>await model.executeAsync(input);
     let pieces = [];
     let final: any = {};
@@ -223,11 +223,40 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
             board[cords.y][cords.x] = piece.type;
         }
     }
+    let last_moved = "";
+    
     let perspective = getTurn(board);
     if(perspective === Perspective.black) {
         board = board.map((row)=>row.reverse()).reverse();
     }
-    console.log("PERSPEC " + perspective);
+    let diffs:number[][] = [];
+    if(last_board){
+        for(let [y,row] of board.entries()){
+            for(let [x, val] of row.entries()){
+                if(val != last_board[y][x]){
+                    diffs.push([y,x]);
+                }
+            }
+        }
+    }
+    if(diffs.length == 2){
+        const lowerCaseRegex = /[a-z]/
+        for(let diff of diffs){
+            let [y,x] = diff;
+            if(board[y][x] != ""){
+                console.log(board[y][x])
+                if(board[y][x].match(lowerCaseRegex)){
+                    last_moved = "b"
+                } else {
+                    last_moved = "w"
+                }
+                last_moved_cache = last_moved;
+            }
+        }
+    } else if (diffs.length == 0 && last_moved_cache){
+        last_moved = last_moved_cache
+    }
+    last_board = board;
     let fen = ""
     for (let row of board) {
         let tracker = 0;
@@ -251,7 +280,7 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
             fen = `${fen}${tracker}`
         }
     }
-    return { fen, board_info, perspective }
+    return { fen, board_info, perspective, last_moved }
 }
 
 async function main() {
@@ -276,9 +305,9 @@ async function main() {
                 type: "image/jpeg"
             });
             const bitmap = await createImageBitmap(blob);
-            const { fen, board_info, perspective } = await parseBoardImage(model, bitmap)
+            const { fen, board_info, perspective, last_moved } = await parseBoardImage(model, bitmap)
             chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-                chrome.tabs.sendMessage(tabs[0].id, { fen, board_info, perspective }, function (response) { });
+                chrome.tabs.sendMessage(tabs[0].id, { fen, board_info, perspective, last_moved }, function (response) { });
             });
         }
         return true;

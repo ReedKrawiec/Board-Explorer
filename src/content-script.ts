@@ -27,6 +27,9 @@ export function toColor(chess: any): Color {
 
 }
 
+const MAX_DEPTH = 24;
+const MIN_DEPTH_UPDATE_EVAL = 20;
+
 let evalBar = document.createElement("div");
 let bar2 = document.createElement("div");
 evalBar.appendChild(bar2);
@@ -51,7 +54,7 @@ function evalFen(stockfish:Worker,fen:string, turn:"w"|"b", func:(cp:number)=>vo
   stockfish.postMessage("stop");
   stockfish.postMessage("ucinewgame");
   stockfish.postMessage("position fen " + fen);
-  stockfish.postMessage("go depth 10");
+  stockfish.postMessage(`go depth ${MAX_DEPTH}`);
   stockfish.onmessage = function (e: any) {
     const line = e.data;
     const regex = /.+\sdepth\s(\d+).+cp\s(-*\d+)/;
@@ -59,7 +62,7 @@ function evalFen(stockfish:Worker,fen:string, turn:"w"|"b", func:(cp:number)=>vo
     if (found && found[1] && found[2]) {
       let cp = parseInt(found[2]);
       let depth = parseInt(found[1]);
-      if(depth > 16){
+      if(depth > MIN_DEPTH_UPDATE_EVAL){
         if (turn === "b") {
           cp = -cp;
         }
@@ -91,7 +94,6 @@ export function playOtherSide(cg: any, chess: any, stockfish: Worker) {
       
       let clamped = Math.min(1000,Math.max(cp,-1000));
       let regularized = 1 - (clamped + 1000) / 2000;
-      console.log(regularized)
       bar2.style.height = regularized * 100 + "%";
     });
     
@@ -123,12 +125,12 @@ function toDests(chess: any): Map<Key, Key[]> {
 }
 
 let last_fen:string;
+let last_moved_cache:string;
 async function main() {
   const text = await fetch(chrome.runtime.getURL("stockfish.js"));
   const script = await text.text();
   blob = new Blob([script], { type: 'application/javascript' });
   var stockfish = new Worker(URL.createObjectURL(blob));
-
   stockfish.postMessage("uci");
   
   chrome.runtime.onMessage.addListener(async (data, sender) => {
@@ -140,29 +142,31 @@ async function main() {
       else {
         evalBar.style.visibility = "visible";
       }
-      console.log("eval")
       return true;
     }
     if(data == "playable"){
       shouldRenderBoard = !shouldRenderBoard;
       hasAlreadyRenderedBoard = false;
-      console.log(shouldRenderBoard);
       if(!shouldRenderBoard){
         board.style.visibility = "hidden";
       }
       return true;
     }
-    const { fen, board_info, perspective } = data;
-    let fullFen = `${fen} ${perspective == 0 ? "w" : "b"} - - 0 1`;
-    console.log(fullFen);
-    console.log(last_fen)
+    const { fen, board_info, perspective, last_moved } = data;
+    let turn;
+    console.log(last_moved + " " + last_moved_cache)
+    if(last_moved != "" && last_moved != last_moved_cache){
+      turn = last_moved === "w" ? "b" : "w";
+      last_moved_cache = turn;
+    } else {
+      turn = perspective === 0 ? "w" : "b";
+    }
+    let fullFen = `${fen} ${turn} - - 0 1`;
+    
     if(last_fen === fullFen){
       return;
     }
-    if(last_fen){
-      //let delta = fenDelta(last_fen,fullFen);
-      //console.log(delta);
-    }
+    console.log(fullFen);
     last_fen = fullFen;
     let chess: any = new Chess(fullFen);
     const boardWidth = board_info.width * imagewidth;
@@ -194,20 +198,22 @@ async function main() {
       cg.set({
         movable: { events: { after: playOtherSide(cg, chess, stockfish) } }
       });
+      
+    }
+    if(shouldRenderEval){
       evalFen(stockfish,chess.fen(),chess.turn(),(cp)=>{
         let clamped = Math.min(1000,Math.max(cp,-1000));
         let regularized = 1 - (clamped + 1000) / 2000;
         const boardHeight = board_info.height * imagewidth;
         const right = (imagewidth - (board_info.x * imagewidth - boardWidth / 2))
         evalBar.style.height = boardHeight + "px";
-        console.log(regularized)
         bar2.style.height = regularized * 100 + "%";
         evalBar.style.right = right + "px";
         evalBar.style.top = top + "px";
+        evalBar.style.visibility = "visible"
         //document.getElementById("evaluation").innerHTML = `${cp / 100}`;
       });
     }
-    
     return true;
   })
 
@@ -256,6 +262,6 @@ async function main() {
       });
     }
     counter++;
-  }, 1000);
+  }, 500);
 }
 main();
