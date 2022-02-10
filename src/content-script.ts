@@ -28,7 +28,7 @@ export function toColor(chess: any): Color {
 }
 
 const MAX_DEPTH = 24;
-const MIN_DEPTH_UPDATE_EVAL = 20;
+const MIN_DEPTH_UPDATE_EVAL = 6;
 
 let evalBar = document.createElement("div");
 let bar2 = document.createElement("div");
@@ -51,6 +51,7 @@ board.style.position = "absolute";
 document.body.appendChild(board);
 
 function evalFen(stockfish:Worker,fen:string, turn:"w"|"b", func:(cp:number)=>void){
+  console.log("EVALING:" + fen)
   stockfish.postMessage("stop");
   stockfish.postMessage("ucinewgame");
   stockfish.postMessage("position fen " + fen);
@@ -66,6 +67,7 @@ function evalFen(stockfish:Worker,fen:string, turn:"w"|"b", func:(cp:number)=>vo
         if (turn === "b") {
           cp = -cp;
         }
+        console.log(cp);
         func(cp);
       }
     }
@@ -90,6 +92,7 @@ export function playOtherSide(cg: any, chess: any, stockfish: Worker) {
       swapTurn(chess);
     }
     let result = chess.move({ from: orig, to: dest, promotion: 'q' });
+    console.log(chess.fen());
     evalFen(stockfish,chess.fen(),chess.turn(),(cp)=>{
       
       let clamped = Math.min(1000,Math.max(cp,-1000));
@@ -136,6 +139,7 @@ async function main() {
   chrome.runtime.onMessage.addListener(async (data, sender) => {
     if(data == "eval"){
       shouldRenderEval = !shouldRenderEval;
+      console.log(`EVAL TURNED:${shouldRenderEval}`)
       if(!shouldRenderEval){
         evalBar.style.visibility = "hidden";
       }
@@ -146,6 +150,7 @@ async function main() {
     }
     if(data == "playable"){
       shouldRenderBoard = !shouldRenderBoard;
+      console.log(`PLAYABLE TURNED:${shouldRenderBoard}`)
       hasAlreadyRenderedBoard = false;
       if(!shouldRenderBoard){
         board.style.visibility = "hidden";
@@ -154,9 +159,9 @@ async function main() {
     }
     const { fen, board_info, perspective, last_moved } = data;
     let turn;
-    console.log(last_moved + " " + last_moved_cache)
     if(last_moved != "" && last_moved != last_moved_cache){
       turn = last_moved === "w" ? "b" : "w";
+      console.log(`TURN = ${turn}`);
       last_moved_cache = turn;
     } else {
       turn = perspective === 0 ? "w" : "b";
@@ -166,7 +171,7 @@ async function main() {
     if(last_fen === fullFen){
       return;
     }
-    console.log(fullFen);
+    //console.log(fullFen);
     last_fen = fullFen;
     let chess: any = new Chess(fullFen);
     const boardWidth = board_info.width * imagewidth;
@@ -200,7 +205,7 @@ async function main() {
       });
       
     }
-    if(shouldRenderEval){
+    if(shouldRenderEval && !shouldRenderBoard){
       evalFen(stockfish,chess.fen(),chess.turn(),(cp)=>{
         let clamped = Math.min(1000,Math.max(cp,-1000));
         let regularized = 1 - (clamped + 1000) / 2000;
@@ -232,9 +237,6 @@ async function main() {
   const video = <HTMLVideoElement>document.createElement("video");
   video.srcObject = stream;
   await video.play();
-  const url = chrome.runtime.getURL("my-model.json");
-  let model = await tf.loadGraphModel(url);
-
   setInterval(async () => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.fillStyle = "#000000";
@@ -262,6 +264,6 @@ async function main() {
       });
     }
     counter++;
-  }, 500);
+  }, 1000);
 }
 main();

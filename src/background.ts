@@ -239,20 +239,30 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
             }
         }
     }
-    if(diffs.length == 2){
+    if(diffs.length > 2){
         const lowerCaseRegex = /[a-z]/
+        let black_count = 0;
+        let white_count = 0;
         for(let diff of diffs){
             let [y,x] = diff;
             if(board[y][x] != ""){
-                console.log(board[y][x])
                 if(board[y][x].match(lowerCaseRegex)){
-                    last_moved = "b"
+                    black_count++;
                 } else {
-                    last_moved = "w"
+                    white_count++;
                 }
                 last_moved_cache = last_moved;
             }
         }
+        console.log(`${white_count} ${black_count}`)
+        if(black_count > white_count){
+            last_moved = "w";
+        } else if (white_count > black_count){
+            last_moved = "b";
+        } else {
+            last_moved = last_moved_cache
+        }
+        console.log(last_moved)
     } else if (diffs.length == 0 && last_moved_cache){
         last_moved = last_moved_cache
     }
