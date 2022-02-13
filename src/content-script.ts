@@ -158,6 +158,7 @@ async function main() {
       return true;
     }
     const { fen, board_info, perspective, last_moved } = data;
+    console.log("LAST MOVED=" + last_moved);
     let turn;
     if(last_moved != "" && last_moved != last_moved_cache){
       turn = last_moved === "w" ? "b" : "w";
@@ -171,7 +172,7 @@ async function main() {
     if(last_fen === fullFen){
       return;
     }
-    //console.log(fullFen);
+    console.log(fullFen);
     last_fen = fullFen;
     let chess: any = new Chess(fullFen);
     const boardWidth = board_info.width * imagewidth;
@@ -206,7 +207,7 @@ async function main() {
       
     }
     if(shouldRenderEval && !shouldRenderBoard){
-      evalFen(stockfish,chess.fen(),chess.turn(),(cp)=>{
+      evalFen(stockfish,fullFen,chess.turn(),(cp)=>{
         let clamped = Math.min(1000,Math.max(cp,-1000));
         let regularized = 1 - (clamped + 1000) / 2000;
         const boardHeight = board_info.height * imagewidth;

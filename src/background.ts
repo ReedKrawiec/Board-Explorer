@@ -83,7 +83,7 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
     ctx.drawImage(image, 0, 0);
     const input = tf.image.resizeBilinear(tf.browser.fromPixels(image), [512, 512])
         .div(255.0).expandDims(0);
-    const res: Array<any> = <Array<any>>await model.executeAsync(input);
+    const res: any = <any>await model.executeAsync(input);
     let pieces = [];
     let final: any = {};
     const boxes = res[0].arraySync()[0];
@@ -262,7 +262,6 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
         } else {
             last_moved = last_moved_cache
         }
-        console.log(last_moved)
     } else if (diffs.length == 0 && last_moved_cache){
         last_moved = last_moved_cache
     }
@@ -315,7 +314,12 @@ async function main() {
                 type: "image/jpeg"
             });
             const bitmap = await createImageBitmap(blob);
-            const { fen, board_info, perspective, last_moved } = await parseBoardImage(model, bitmap)
+            tf.engine().startScope()
+            const { fen, board_info, perspective, last_moved } = await parseBoardImage(model, bitmap);
+            tf.engine().endScope()
+            console.log(tf.memory().numTensors);
+            console.log(tf.memory());
+            console.log(last_moved +" LAST MOVE");
             chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
                 chrome.tabs.sendMessage(tabs[0].id, { fen, board_info, perspective, last_moved }, function (response) { });
             });
