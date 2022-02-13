@@ -30,6 +30,19 @@ export function toColor(chess: any): Color {
 const MAX_DEPTH = 24;
 const MIN_DEPTH_UPDATE_EVAL = 6;
 
+let curr = document.createElement("p");
+let tex = document.createTextNode("Placeholder");
+curr.appendChild(tex);
+curr.style.position = "absolute";
+curr.style.top = "0px";
+curr.style.left = "0px";
+curr.style.fontSize = "3em";
+curr.style.height = "3em";
+curr.style.width = "3em";
+curr.style.zIndex = "100!important";
+
+
+document.body.appendChild(curr);
 let evalBar = document.createElement("div");
 let bar2 = document.createElement("div");
 evalBar.appendChild(bar2);
@@ -158,7 +171,9 @@ async function main() {
       return true;
     }
     const { fen, board_info, perspective, last_moved } = data;
+
     console.log("LAST MOVED=" + last_moved);
+    curr.innerText = last_moved;
     let turn;
     if(last_moved != "" && last_moved != last_moved_cache){
       turn = last_moved === "w" ? "b" : "w";

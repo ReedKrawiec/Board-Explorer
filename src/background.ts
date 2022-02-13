@@ -86,10 +86,14 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
     const res: any = <any>await model.executeAsync(input);
     let pieces = [];
     let final: any = {};
+    input.dispose();
     const boxes = res[0].arraySync()[0];
     const probabilitys = res[1].arraySync()[0];
     const classes = res[2].arraySync()[0];
     const entries = res[3].arraySync()[0];
+    for(let tensor of res){
+        tensor.dispose();
+    }
     const global_sample_result_map:{
         [key:string]:{
             count:number,
@@ -239,31 +243,35 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
             }
         }
     }
-    if(diffs.length > 2){
-        const lowerCaseRegex = /[a-z]/
-        let black_count = 0;
-        let white_count = 0;
-        for(let diff of diffs){
-            let [y,x] = diff;
-            if(board[y][x] != ""){
-                if(board[y][x].match(lowerCaseRegex)){
-                    black_count++;
-                } else {
-                    white_count++;
-                }
-                last_moved_cache = last_moved;
+    const lowerCaseRegex = /[a-z]/
+    let black_count = 0;
+    let white_count = 0;
+    for (let diff of diffs) {
+        let [y, x] = diff;
+        if (board[y][x] != "") {
+            if (board[y][x].match(lowerCaseRegex)) {
+                black_count++;
+            } else {
+                white_count++;
             }
         }
-        console.log(`${white_count} ${black_count}`)
-        if(black_count > white_count){
-            last_moved = "w";
-        } else if (white_count > black_count){
+    }
+    if (diffs.length > 0) {
+        console.log("///////////////")
+        console.log(black_count);
+        console.log(white_count);
+        console.log(last_moved_cache);
+        if (black_count > white_count) {
             last_moved = "b";
+            last_moved_cache = "b";
+        } else if (white_count > black_count) {
+            last_moved = "w";
+            last_moved_cache = "w";
+        } else if(last_moved_cache === "w" || last_moved_cache === "b"){
+            last_moved = last_moved_cache;
         } else {
-            last_moved = last_moved_cache
+            last_moved = "w";
         }
-    } else if (diffs.length == 0 && last_moved_cache){
-        last_moved = last_moved_cache
     }
     last_board = board;
     let fen = ""
@@ -289,7 +297,7 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
             fen = `${fen}${tracker}`
         }
     }
-    return { fen, board_info, perspective, last_moved }
+    return { fen, board_info, perspective, last_moved, numDiffs: diffs.length };
 }
 
 async function main() {
@@ -315,14 +323,15 @@ async function main() {
             });
             const bitmap = await createImageBitmap(blob);
             tf.engine().startScope()
-            const { fen, board_info, perspective, last_moved } = await parseBoardImage(model, bitmap);
+            const { fen, board_info, perspective, last_moved, numDiffs } = await parseBoardImage(model, bitmap);
             tf.engine().endScope()
             console.log(tf.memory().numTensors);
-            console.log(tf.memory());
             console.log(last_moved +" LAST MOVE");
-            chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-                chrome.tabs.sendMessage(tabs[0].id, { fen, board_info, perspective, last_moved }, function (response) { });
-            });
+            if(numDiffs > 0) {
+                chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+                    chrome.tabs.sendMessage(tabs[0].id, { fen, board_info, perspective, last_moved }, function (response) { });
+                });
+            }
         }
         return true;
     })
