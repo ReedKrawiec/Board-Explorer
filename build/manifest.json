@@ -1,22 +1,25 @@
 {
     "manifest_version": 3,
-    "name": "React Chrome Extension",
+    "name": "Board Explorer",
     "version": "0.1",
-    "description": "Boilerplate manifest for React based Chrome Extension using Google's Manifest v3",
+    "description": "Turn static chessboards into playable chessboards! See an evaluation bar for any chessboard on screen.",
     "permissions": ["webNavigation","desktopCapture","downloads","scripting"],
-    "author": "Christian Sendler",
-    "homepage_url": "https://github.com/casendler/",
-    "short_name": "React Extension",
+    "author": "Reed Krawiec",
+    "homepage_url": "https://github.com/reedkrawiec/Board-Explorer",
+    "short_name": "Board Explorer",
+    "icons":{
+        "380":"images/icons/icon.png" 
+    },
     "action": {
         "default_popup": "popup.html",
-        "default_title": "React Chrome Extension"
+        "default_title": "Board Explorer"
     },
     "background": {
         "service_worker": "background.js"
     },
     "content_scripts": [
         {
-            "matches": ["https://www.youtube.com/*"],
+            "matches": ["https://www.youtube.com/*","https://www.lichess.org/*"],
             "js": ["content-script.js"],
             "css":["chessground.css","theme.css"]
         }

@@ -8,18 +8,41 @@
 </head>
 <style>
   body{
-    height:2000px;
-    width:2000px;
+
   }
   video{
     display:none;
+  }
+  .icon{
+    width:5em;
+    height:5em;
+  }
+  .on{
+    background-color:rgb(106, 228, 106)
+  }
+  .off{
+    background-color:rgb(192, 192, 192)
+  }
+  .icon_container{
+    display:flex;
+    align-items: center;
+    justify-content: flex-start;
   }
 </style>
 
 
 <body>
-  <p><button id="eval">Toggle Eval</button></p>
-  <p><button id="playable">Toggle Playable</button></p>
+  <div class="icon_container">
+    <button id="toggle" class="off" title="Toggle detection">
+      <img class="icon" src="images/icons/power.png" />
+    </button>
+    <button id="eval" class="off" title="Toggle Evaluation Bar">
+      <img class="icon" src="images/icons/brain.png" />
+    </button>
+    <button id="playable" class="off" title="Toggle Playable Board">
+      <img class="icon" src="images/icons/rook.png" />
+    </button>
+  </div>
   <script src="app.js"></script>
 </body>
 
