@@ -1,6 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 
-const names = ["LMS", "BOARD", "P", "R", "N", "B", "Q", "K", "p", "r", "n", "b", "q", "k"]
+const names = ["BOARD", "p", "r", "n", "b", "q", "k", "P", "R", "N", "B", "Q", "K"]
 const [modelWidth, modelHeight] = [512, 512];
 
 function rgbToHex(r:number, g:number, b:number) {
