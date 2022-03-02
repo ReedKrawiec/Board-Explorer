@@ -143,10 +143,11 @@ function toDests(chess: any): Map<Key, Key[]> {
 let last_fen:string;
 let last_moved_cache:string;
 async function main() {
-  const text = await fetch(chrome.runtime.getURL("stockfish.js"));
+  const text = await fetch(chrome.runtime.getURL("scripts/stockfish.js"));
   const script = await text.text();
   blob = new Blob([script], { type: 'application/javascript' });
   var stockfish = new Worker(URL.createObjectURL(blob));
+  console.log(stockfish)
   stockfish.postMessage("uci");
   
   chrome.runtime.onMessage.addListener(async (data, sender) => {

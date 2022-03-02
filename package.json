@@ -5,7 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "setup": "npm ci && cp seedrandom.js node_modules/seedrandom/seedrandom.js",
-    "build": "node_modules/.bin/webpack && cp dist/* build && rm -rf dist"
+    "build": "node_modules/.bin/webpack && cp dist/* build/scripts && rm -rf dist"
   },
   "repository": {
     "type": "git",

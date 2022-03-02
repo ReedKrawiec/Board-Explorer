@@ -302,7 +302,7 @@ async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
 
 async function main() {
     //const response = fetch("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==");
-    const url = chrome.runtime.getURL("my-model.json");
+    const url = chrome.runtime.getURL("model/my-model.json");
     let model = await tf.loadGraphModel(url);
     const canvas = new OffscreenCanvas(512,512);
     chrome.runtime.onMessage.addListener(async (data, sender) => {

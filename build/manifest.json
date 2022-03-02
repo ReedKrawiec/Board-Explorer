@@ -15,17 +15,17 @@
         "default_title": "Board Explorer"
     },
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "scripts/background.js"
     },
     "content_scripts": [
         {
             "matches": ["https://www.youtube.com/*","https://www.lichess.org/*"],
-            "js": ["content-script.js"],
-            "css":["chessground.css","theme.css"]
+            "js": ["scripts/content-script.js"],
+            "css":["css/chessground.css","css/theme.css"]
         }
     ],
     "web_accessible_resources": [{
-        "resources":["stockfish.js","my-model.json","my-model.weights.bin"],
+        "resources":["scripts/stockfish.js","my-model.json","my-model.weights.bin"],
         "matches":["<all_urls>"]
     }]
 }
