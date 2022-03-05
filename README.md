@@ -11,7 +11,7 @@ your lines and check the evaluation. You're also able to view the evaluation whi
 # Installation
 1. Download a release from the right.
 2. Open chrome://extensions, enable Developer mode
-3. Load the packed zip download in step 1.
+3. Load the packed crx download in step 1 by dragging from your file explorer onto this page.
 # Building from Souce
 
 1. Download this repository as a zip
