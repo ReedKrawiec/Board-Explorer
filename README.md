@@ -5,7 +5,8 @@
 # About
 
 Board Explorer lets you turn any static chess board (like youtube videos and pictures) into a playable chessboard. You can play
-your lines and check the evaluation. You're also able to view the evaluation while the game is being played.
+your lines and check the evaluation. You're also able to view the evaluation while the game is being played. Under the hood, we locally record
+(only on your computer) your screen and use an image recognition model (powered by yolov5) to identify the boards.
 
 # Installation
 1. Download a release from the right.
