@@ -1,7 +1,3 @@
-let isToggled = false;
-let isEvaluating = false;
-let isPlayable = false;
-
 function toggleView(classlist,state){
   if(state){
     classlist.add("on");
@@ -12,22 +8,44 @@ function toggleView(classlist,state){
     classlist.remove("on");
   }
 }
+chrome.storage.local.get(['state'], function (state) {
+  console.log(state);
+  if(Object.keys(state).length === 0){
+    state = {
+      state:{
+        isToggled: false,
+        isEvaluating: false,
+        isPlayable: false,
+      }
+    }
+  }
+  let {isToggled, isEvaluating, isPlayable} = state.state;
+  if(isToggled){
+    toggleView(document.querySelector("#toggle").classList, isToggled);
+  } 
+  if(isEvaluating){
+    toggleView(document.querySelector("#eval").classList, isEvaluating);
+  }
+  if(isPlayable){
+    toggleView(document.querySelector("#playable").classList, isPlayable);
+  }
+  document.querySelector("#toggle").addEventListener("click", function () {
+    isToggled = !isToggled;
+    toggleView(document.querySelector("#toggle").classList, isToggled);
+    chrome.storage.local.set({state: {isToggled, isEvaluating, isPlayable}});
+    chrome.runtime.sendMessage("toggle");
+  });
+  document.querySelector("#eval").addEventListener("click", function () {
+    isEvaluating = !isEvaluating;
+    toggleView(document.querySelector("#eval").classList, isEvaluating);
+    chrome.storage.local.set({state: {isToggled, isEvaluating, isPlayable}});
+    chrome.runtime.sendMessage("eval");
+  });
+  document.querySelector("#playable").addEventListener("click", function () {
+    isPlayable = !isPlayable;
+    toggleView(document.querySelector("#playable").classList, isPlayable);
+    chrome.storage.local.set({state: {isToggled, isEvaluating, isPlayable}});
+    chrome.runtime.sendMessage("playable");
+  });
+});
 
-document.querySelector("#toggle").addEventListener("click", function() {
-  isToggled = !isToggled;
-  let classlist = document.querySelector("#toggle").classList
-  toggleView(classlist,isToggled);
-  chrome.runtime.sendMessage("toggle");
-});
-document.querySelector("#eval").addEventListener("click", function() {
-  isEvaluating = !isEvaluating;
-  let classlist = document.querySelector("#eval").classList
-  toggleView(classlist,isEvaluating);
-  chrome.runtime.sendMessage("eval");
-});
-document.querySelector("#playable").addEventListener("click", function() {
-  isPlayable = !isPlayable;
-  let classlist = document.querySelector("#playable").classList
-  toggleView(classlist,isPlayable);
-  chrome.runtime.sendMessage("playable");
-});
