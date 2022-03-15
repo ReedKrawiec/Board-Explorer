@@ -3,7 +3,7 @@
     "name": "Board Explorer",
     "version": "0.1",
     "description": "Turn static chessboards into playable chessboards! See an evaluation bar for any chessboard on screen.",
-    "permissions": ["webNavigation","desktopCapture","downloads","scripting"],
+    "permissions": ["webNavigation","desktopCapture","downloads","scripting","storage"],
     "author": "Reed Krawiec",
     "homepage_url": "https://github.com/reedkrawiec/Board-Explorer",
     "short_name": "Board Explorer",
