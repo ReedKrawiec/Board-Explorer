@@ -262,12 +262,28 @@ chrome.storage.local.set({
 async function main() {
     //const response = fetch("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==");
     const url = chrome.runtime.getURL("model/my-model.json");
-    let model = await tf.loadGraphModel(url);
+    let model:tf.GraphModel = await tf.loadGraphModel(url);
     const canvas = new OffscreenCanvas(512,512);
     chrome.runtime.onMessage.addListener(async (data, sender) => {
+        console.log(data);
+        if (data == "toggle") {
+            const curr = await chrome.storage.local.get("enabled")
+            chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+                chrome.tabs.sendMessage(tabs[0].id, "toggle", function (response) { });
+            });
+            if(!curr.enabled){
+                model = await tf.loadGraphModel(url);
+            }
+            else{
+                model = null;
+            }
+            await chrome.storage.local.set({
+                enabled: !curr.enabled,
+            });
+        }    
         if(data == "eval"){
             const curr = await chrome.storage.local.get("evaluating")
-            chrome.storage.local.set({
+            await chrome.storage.local.set({
                 evaluating: !curr.evaluating,
             });
             chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -276,7 +292,7 @@ async function main() {
         }
         else if (data == "playable"){
             const curr = await chrome.storage.local.get("playable")
-            chrome.storage.local.set({
+            await chrome.storage.local.set({
                 playable: !curr.playable,
             });
             chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {

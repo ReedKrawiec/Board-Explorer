@@ -140,38 +140,16 @@ function toDests(chess: any): Map<Key, Key[]> {
   return dests;
 }
 
-let last_fen:string;
-let last_moved_cache:string;
-async function main() {
+const loadStockfish = async (): Promise<Worker> => {
   const text = await fetch(chrome.runtime.getURL("scripts/stockfish.js"));
   const script = await text.text();
   blob = new Blob([script], { type: 'application/javascript' });
   var stockfish = new Worker(URL.createObjectURL(blob));
-  console.log(stockfish)
-  stockfish.postMessage("uci");
-  
-  chrome.runtime.onMessage.addListener(async (data, sender) => {
-    if(data == "eval"){
-      shouldRenderEval = !shouldRenderEval;
-      console.log(`EVAL TURNED:${shouldRenderEval}`)
-      if(!shouldRenderEval){
-        evalBar.style.visibility = "hidden";
-      }
-      else {
-        evalBar.style.visibility = "visible";
-      }
-      return true;
-    }
-    if(data == "playable"){
-      shouldRenderBoard = !shouldRenderBoard;
-      console.log(`PLAYABLE TURNED:${shouldRenderBoard}`)
-      hasAlreadyRenderedBoard = false;
-      if(!shouldRenderBoard){
-        board.style.visibility = "hidden";
-      }
-      return true;
-    }
-    const { fen, board_info, perspective, last_moved } = data;
+  return stockfish;
+}
+
+const handleBoardData = (data:any,stockfish:Worker) => {
+  const { fen, board_info, perspective, last_moved } = data;
 
     console.log("LAST MOVED=" + last_moved);
     curr.innerText = last_moved;
@@ -236,9 +214,9 @@ async function main() {
         //document.getElementById("evaluation").innerHTML = `${cp / 100}`;
       });
     }
-    return true;
-  })
+}
 
+const initializeVideoLoop = async () => {
   let counter = 0;
 
   // @ts-ignore
@@ -251,10 +229,10 @@ async function main() {
   canvas.width = 512;
   const ctx = canvas.getContext("2d");
 
-  const video = <HTMLVideoElement>document.createElement("video");
+  let video = <HTMLVideoElement>document.createElement("video");
   video.srcObject = stream;
   await video.play();
-  setInterval(async () => {
+  let interval = setInterval(async () => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -268,10 +246,6 @@ async function main() {
       new_height
     );
     const blob: Blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
-    //const bitmap = await createImageBitmap(blob);
-
-    //const input = tf.image.resizeBilinear(tf.browser.fromPixels(bitmap), [512, 512])
-    //.div(255.0).expandDims(0);
     const buffer = await blob.arrayBuffer();
     const typed = new Uint8Array(buffer);
     if (!hasAlreadyRenderedBoard) {
@@ -282,5 +256,52 @@ async function main() {
     }
     counter++;
   }, 1000);
+  return interval;
+}
+
+let last_fen:string;
+let last_moved_cache:string;
+let isEnabled = false;
+async function main() {
+  let stockfish:Worker;
+  let interval:NodeJS.Timer;
+  chrome.runtime.onMessage.addListener(async (data, sender) => {
+    console.log(data);
+    if(data == "toggle"){
+      isEnabled = !isEnabled;
+      if(isEnabled){
+        interval = await initializeVideoLoop();
+        stockfish = await loadStockfish();
+        stockfish.postMessage("uci");
+      }
+      else{
+        clearInterval(interval);
+        stockfish = null;
+      }
+    }
+    if(data == "eval"){
+      shouldRenderEval = !shouldRenderEval;
+      console.log(`EVAL TURNED:${shouldRenderEval}`)
+      if(!shouldRenderEval){
+        evalBar.style.visibility = "hidden";
+      }
+      else {
+        evalBar.style.visibility = "visible";
+      }
+      return true;
+    }
+    if(data == "playable"){
+      shouldRenderBoard = !shouldRenderBoard;
+      console.log(`PLAYABLE TURNED:${shouldRenderBoard}`)
+      hasAlreadyRenderedBoard = false;
+      if(!shouldRenderBoard){
+        board.style.visibility = "hidden";
+      }
+      return true;
+    }
+    handleBoardData(data,stockfish);
+    return true;
+  })
+  
 }
 main();

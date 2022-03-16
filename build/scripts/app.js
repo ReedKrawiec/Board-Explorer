@@ -35,7 +35,6 @@ document.querySelector("#toggle").addEventListener("click",async function() {
   let classlist = document.querySelector("#toggle").classList
   toggleView(classlist,isToggled);
   chrome.runtime.sendMessage("toggle");
-  await chrome.storage.local.set({"enabled":isToggled});
 });
 document.querySelector("#eval").addEventListener("click",async function() {
   isEvaluating = !isEvaluating;
