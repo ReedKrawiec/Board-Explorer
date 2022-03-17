@@ -19,7 +19,7 @@
     },
     "content_scripts": [
         {
-            "matches": ["https://www.youtube.com/*","https://www.lichess.org/*"],
+            "matches": ["<all_urls>"],
             "js": ["scripts/content-script.js"],
             "css":["css/chessground.css","css/theme.css"]
         }
