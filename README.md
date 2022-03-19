@@ -24,3 +24,16 @@ your lines and check the evaluation. You're also able to view the evaluation whi
 # Usage
 
 The extension will run on Youtube when enabled. You will be prompted to share your screen with the extension. The control can be accessed in the extension's popup in the top right.
+
+# Examples
+
+Overlay a chessboard to try moves while watching a video!
+<div align="center">
+  <img src="https://raw.githubusercontent.com/ReedKrawiec/Board-Explorer/main/docs/BeforeAfter.png" />
+</div>
+
+
+Enable an evaluation bar to render for the on-screen game
+<div align="center">
+  <img src="https://raw.githubusercontent.com/ReedKrawiec/Board-Explorer/main/docs/Eval.png" />
+</div>
