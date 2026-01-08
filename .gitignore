@@ -2,3 +2,8 @@ node_modules
 node_modules2
 *.swp
 *.vim
+
+# DaMa generated data (large datasets)
+dama/chess_output/
+dama/chess_input/
+dama/test_chess_board.png

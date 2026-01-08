@@ -1,0 +1,35 @@
+{
+  "providers": [
+    {
+      "name":"example",
+      "min":1,
+      "max":60,
+      "probability":1,
+      "overlap":false,
+      "offscreen":false,
+      "position":{
+        "x":{
+          "min":0,
+          "max":2000
+        },
+        "y":{
+          "min":0,
+          "max":2000
+        }
+      },
+      "classes":[
+        "example_box"
+      ]
+    }
+  ],
+  "input": "./small_input",
+  "output": {
+    "path":"./small_output",
+    "width": 512,
+    "height": 512,
+    "distribution": {
+      "train": 0.7,
+      "test": 0.3
+    }
+  }
+}

@@ -1,0 +1,14 @@
+input
+small_input
+output
+*.swp
+env
+*.pyc
+.vscode
+
+# Chess dataset generation (custom)
+chess_output/
+chess_input/
+test_chess_board.png
+debug_dama.py
+test_provider.py
