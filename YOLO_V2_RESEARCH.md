@@ -1,43 +1,73 @@
-# YOLO v2 Rooftop Detection with WASM - Research Summary
+# YOLO11 Rooftop Detection with WASM - Research Summary
 
 ## Executive Summary
 
-This document summarizes research for transitioning Board Explorer from chess board detection (YOLOv5) to rooftop detection using the latest YOLO models, synthetic data generation with DaMa, and browser-based inference via WebAssembly.
+This document summarizes research for transitioning Board Explorer from chess board detection (YOLOv5) to rooftop detection using **YOLO11** (the latest production-ready model as of January 2026), synthetic data generation with DaMa, and browser-based inference via WebAssembly.
+
+**Key Recommendations:**
+- ✅ **Use YOLO11** - Latest stable, production-ready model with excellent rooftop detection performance
+- 🚀 **Monitor YOLO26** - Next-gen model coming Q1 2026 with 43% faster CPU inference
+- 🎯 **Train YOLO11n** - Nano variant for optimal browser performance
+- 🌐 **Deploy via ONNX Runtime Web** - Modern WASM solution with WebGPU support
 
 ---
 
 ## 1. Latest YOLO Models for Rooftop Detection
 
-### Recommended Model: YOLOv11 (2024) or YOLOv12 (2025)
+### Recommended Model: YOLO11 (Production-Ready Now)
 
-**YOLOv11 (Ultralytics)**
-- Released in 2024 as the latest stable version
+**YOLO11** is the latest stable, production-ready model from Ultralytics as of January 2026.
+
+**YOLO11 (Ultralytics - September 2024)**
+- ✅ **Available NOW** - Latest stable, production-ready release
 - **Key advantages**: More accurate than YOLOv8 under similar latency budgets
-- **Better for**: Small-object detection and moderately dense scenes (ideal for rooftop detection)
+- **Better for**: Small-object detection and moderately dense scenes (PERFECT for rooftop detection)
 - **More stable** under transfer and domain shift
-- **Performance**: Improved architecture and training methods
+- **Performance**: Improved architecture with hybrid task assignment
+- **22% fewer parameters** than YOLOv8m while achieving higher mAP
+- **Easy to train**: Simple Python API with excellent documentation
 
-**YOLOv12 (Latest - Feb 2025)**
-- State-of-the-art released February 18, 2025
-- **New features**:
-  - Attention-based design with Area Attention (A²)
-  - Residual ELAN blocks
-  - FlashAttention
-- **Higher mAP** at all scales while maintaining/improving inference latency
+**Model Variants** (from smallest to largest):
+- `yolo11n.pt` - Nano (best for browser/edge, recommended)
+- `yolo11s.pt` - Small
+- `yolo11m.pt` - Medium
+- `yolo11l.pt` - Large
+- `yolo11x.pt` - Extra Large
 
-**YOLOv10 (Alternative)**
-- Released May 2024 (NeurIPS 2024)
-- **Key innovation**: Removes need for NMS (non-maximum suppression)
-- **Advantage**: Faster real-time inference
-- From Tsinghua University researchers
+### Coming Soon: YOLO26 (Next-Generation)
 
-### Rooftop/Solar Panel Detection Performance
+**YOLO26 (Ultralytics - Announced September 2025)**
+- ⚠️ **NOT YET RELEASED** - Still in training, not yet open-sourced
+- Expected late Q1 2026 or when officially announced
+- **Performance preview**: Up to 43% faster CPU inference than YOLO11-N
+- **Key innovations**:
+  - **End-to-End NMS-Free Inference** - Direct predictions, lower latency
+  - **DFL Removal** - Simplified export and broader edge device support
+  - **ProgLoss + STAL** - Better accuracy on small objects
+  - **MuSGD Optimizer** - More stable training
+- **Optimized for**: Edge and low-power devices
+- Will support all YOLO11 tasks: detection, segmentation, classification, pose, OBB
 
-Recent research shows excellent YOLO performance on rooftop solar panel detection:
+**When to switch to YOLO26**: Once officially released, benchmark both YOLO11 and YOLO26 on your rooftop dataset to see which performs better for your specific use case.
 
-- **YOLOv11-X**: 89.7% precision, 87.7% recall, 92.7% mAP, 90% F1 score
-- **YOLOv11**: 93.4% mAP@0.5 for defect detection (balanced performance)
-- **YOLOv5**: 7.1ms inference time, 94.1% precision (still fast!)
+### Alternative: YOLOv10 (Non-Ultralytics)
+
+**YOLOv10 (Tsinghua University - May 2024, NeurIPS 2024)**
+- Different lineage from Ultralytics (not YOLO11 predecessor)
+- **Key innovation**: NMS-free architecture
+- Good option if you need academic alternative
+- Less ecosystem support than Ultralytics YOLO
+
+### Rooftop/Solar Panel Detection Performance (Real-World Results)
+
+Recent 2025 research shows excellent YOLO11 performance on rooftop solar panel detection:
+
+- **YOLO11-X**: 89.7% precision, 87.7% recall, 92.7% mAP, 90% F1 score
+- **YOLO11**: 93.4% mAP@0.5 for defect detection (balanced performance)
+- **YOLO11**: Superior accuracy on small objects compared to YOLOv5 and YOLOv8
+- **For comparison, YOLOv5**: 7.1ms inference time, 94.1% precision (still respectable!)
+
+**Key takeaway**: YOLO11 delivers state-of-the-art results for rooftop detection tasks.
 
 ### Training Datasets Used in Research
 
@@ -196,11 +226,20 @@ To generate synthetic rooftop data, you would:
 3. Generate 5,000-10,000 synthetic images
 4. Augment with real aerial/satellite images if available
 
-### Phase 2: Model Training
-1. **Use YOLOv11** (best balance of performance and maturity)
-2. Install Ultralytics: `pip install ultralytics`
-3. Prepare dataset in YOLO format (DaMa outputs this!)
-4. Create `rooftop.yaml` config:
+### Phase 2: Model Training with YOLO11
+
+1. **Install Ultralytics** (latest package):
+```bash
+pip install ultralytics
+```
+
+2. **Prepare dataset** in YOLO format (DaMa outputs this automatically!)
+   - `dataset/train/images/` - Training images
+   - `dataset/train/labels/` - Training annotations
+   - `dataset/val/images/` - Validation images
+   - `dataset/val/labels/` - Validation annotations
+
+3. **Create `rooftop.yaml` config**:
 ```yaml
 path: /path/to/dataset
 train: train/images
@@ -208,12 +247,52 @@ val: val/images
 names:
   0: rooftop
 ```
-5. Train model:
+
+4. **Train YOLO11 model**:
+
+**Option A: Python (Recommended)**
 ```python
 from ultralytics import YOLO
+
+# Load pretrained YOLO11 nano model
 model = YOLO("yolo11n.pt")  # nano for browser efficiency
-model.train(data="rooftop.yaml", epochs=100, imgsz=640)
+
+# Train on custom rooftop dataset
+results = model.train(
+    data="rooftop.yaml",
+    epochs=100,
+    imgsz=640,
+    device="cpu",  # or "0" for GPU, "mps" for Mac
+    batch=16
+)
+
+# Validate the model
+metrics = model.val()
+
+# Export for browser inference
+model.export(format="onnx")  # for ONNX Runtime Web
+# OR
+model.export(format="tfjs")  # for TensorFlow.js
 ```
+
+**Option B: Command Line**
+```bash
+# Train
+yolo detect train data=rooftop.yaml model=yolo11n.pt epochs=100 imgsz=640
+
+# Validate
+yolo detect val model=runs/detect/train/weights/best.pt
+
+# Export
+yolo export model=runs/detect/train/weights/best.pt format=onnx
+```
+
+5. **Training Tips**:
+   - Start with `yolo11n.pt` (nano) for fastest browser performance
+   - Use `batch=16` or `batch=32` depending on your GPU memory
+   - Monitor validation mAP - stop if it plateaus
+   - Try data augmentation if accuracy is low
+   - Experiment with `imgsz=416` or `imgsz=320` for even smaller models
 
 ### Phase 3: Browser Integration
 
@@ -241,8 +320,9 @@ model.train(data="rooftop.yaml", epochs=100, imgsz=640)
 
 ### Model Size for Browser
 - **Target**: < 30 MB for optimal browser performance
-- **Use**: YOLOv11n (nano) or YOLOv12n variants
+- **Use**: YOLO11n (nano) variant - smallest, fastest for browser
 - **Quantization**: 16-bit quantization can reduce size by ~50%
+- **When YOLO26 releases**: Try YOLO26n for even faster CPU inference
 
 ### Performance Expectations
 - **Inference time**: 7-50ms per frame (depends on model size and backend)
@@ -258,20 +338,28 @@ model.train(data="rooftop.yaml", epochs=100, imgsz=640)
 
 ## Sources
 
-### YOLO Models
-- [Ultralytics YOLO Evolution Overview](https://arxiv.org/html/2510.09653v2)
-- [YOLOv10 Real-Time End-to-End Object Detection](https://docs.ultralytics.com/models/yolov10/)
-- [YOLO Model Comparison: YOLOv11 vs Previous](https://www.ultralytics.com/blog/comparing-ultralytics-yolo11-vs-previous-yolo-models)
+### YOLO11 & YOLO26 Models
+- [Ultralytics YOLO11 Official Docs](https://docs.ultralytics.com/models/yolo11/)
+- [Ultralytics YOLO26 Official Docs](https://docs.ultralytics.com/models/yolo26/)
+- [YOLO26: Next-Gen Ultralytics Model for Real-Time Vision AI](https://blog.roboflow.com/yolo26/)
+- [Ultralytics YOLO Evolution Overview (YOLO26, YOLO11, YOLOv8, YOLOv5)](https://arxiv.org/html/2510.09653v2)
+- [YOLO Model Comparison: YOLO11 vs Previous](https://www.ultralytics.com/blog/comparing-ultralytics-yolo11-vs-previous-yolo-models)
 - [What is YOLO? The Ultimate Guide [2025]](https://blog.roboflow.com/guide-to-yolo-models/)
+- [YOLO11 on Hugging Face](https://huggingface.co/Ultralytics/YOLO11)
+- [GitHub: Ultralytics YOLO](https://github.com/ultralytics/ultralytics)
 
 ### Rooftop Detection
 - [Detecting Defects in Solar Panels Using YOLO v10 and v11](https://www.mdpi.com/2079-9292/14/2/344)
 - [Solar Panel Detection and Segmentation](https://github.com/yasaman-y/solar_panel_detection_and_segmentation)
 - [Solar Panels Object Detection Dataset (Roboflow)](https://universe.roboflow.com/yolomodel-yp9un/solar-panels-4uetb)
+- [Comparative Performance YOLOv5, YOLOv8, YOLOv11 for Solar Panel Detection](https://www.preprints.org/manuscript/202501.0788)
 
-### Training
+### YOLO11 Training Tutorials
 - [Model Training with Ultralytics YOLO](https://docs.ultralytics.com/modes/train/)
-- [How to: Ultralytics YOLOv11 - Training Your Own AI Model](https://www.mileshilliard.com/posts/yolo11/)
+- [How to Train a YOLO11 Object Detection Model on Custom Dataset (Roboflow)](https://blog.roboflow.com/yolov11-how-to-train-custom-data/)
+- [Training YOLO11 Object Detector on Custom Dataset (Medium)](https://medium.com/@estebanuri/training-yolov11-object-detector-on-a-custom-dataset-39bba09530ff)
+- [YOLO11 Training Notebook (Roboflow GitHub)](https://github.com/roboflow/notebooks/blob/main/notebooks/train-yolo11-object-detection-on-custom-dataset.ipynb)
+- [How to: Ultralytics YOLO11 - Training Your Own AI Model](https://www.mileshilliard.com/posts/yolo11/)
 - [How to Train YOLO 11 Object Detection Models Locally](https://www.ejtech.io/learn/train-yolo-models)
 
 ### WASM/Browser Inference
@@ -286,11 +374,19 @@ model.train(data="rooftop.yaml", epochs=100, imgsz=640)
 
 ## Next Steps
 
-1. ✅ Research completed
+1. ✅ Research completed - **YOLO11 is the way to go!**
 2. ⬜ Set up DaMa for rooftop data generation
-3. ⬜ Generate synthetic training dataset
-4. ⬜ Train YOLOv11 model
-5. ⬜ Export to ONNX or TF.js format
-6. ⬜ Integrate browser inference
-7. ⬜ Update extension UI
-8. ⬜ Test and optimize
+3. ⬜ Create rooftop provider for DaMa (aerial view, various roof types)
+4. ⬜ Generate synthetic training dataset (5,000-10,000 images)
+5. ⬜ Install Ultralytics and train YOLO11n model
+6. ⬜ Export to ONNX format (recommended) or TF.js
+7. ⬜ Integrate ONNX Runtime Web or upgrade TensorFlow.js
+8. ⬜ Update extension UI for rooftop detection
+9. ⬜ Test and optimize browser inference
+10. ⬜ When YOLO26 releases: Benchmark against YOLO11
+
+**Estimated Model Performance:**
+- Training time: 2-4 hours (with GPU) for 100 epochs
+- Final model size: 5-10 MB (YOLO11n, quantized)
+- Browser inference: 10-30ms per frame
+- Expected mAP: 85-95% for rooftop detection
