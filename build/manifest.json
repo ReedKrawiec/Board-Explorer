@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "Board Explorer",
-    "version": "0.1",
-    "description": "Turn static chessboards into playable chessboards! See an evaluation bar for any chessboard on screen.",
+    "version": "2.0.0",
+    "description": "Turn static chessboards into playable chessboards! Real-time detection powered by YOLO11.",
     "permissions": ["webNavigation","desktopCapture","downloads","scripting","storage"],
     "author": "Reed Krawiec",
     "homepage_url": "https://github.com/reedkrawiec/Board-Explorer",
@@ -25,7 +25,12 @@
         }
     ],
     "web_accessible_resources": [{
-        "resources":["scripts/stockfish.js","my-model.json","my-model.weights.bin"],
+        "resources":[
+            "scripts/stockfish.js",
+            "model/chess-yolo11.onnx",
+            "scripts/*.wasm",
+            "*.wasm"
+        ],
         "matches":["<all_urls>"]
     }]
 }

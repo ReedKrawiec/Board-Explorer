@@ -1,4 +1,4 @@
-import * as tf from '@tensorflow/tfjs';
+import { OnnxChessDetector, BoardInfo, PieceInfo } from './onnx-chess-detector';
 
 const names = ["BOARD", "p", "r", "n", "b", "q", "k", "P", "R", "N", "B", "Q", "K"]
 const [modelWidth, modelHeight] = [512, 512];
@@ -173,62 +173,31 @@ const createBoardArray = (pieces:piece[],board_info:boardLocation) => {
     return board;
 }
 
-const parseTensorResults = (entries:any,boxes:any,classes:any) => {
-    let board_info: boardLocation;
-    let pieces: piece[] = [];
-    for (let a = 0; a < entries; a++) {
-        const class_name = names[classes[a]];
-        let box = boxes[a];
-        let [x1, y1, x2, y2] = box;
-        const width = x2 - x1;
-        const height = y2 - y1;
-        if (class_name === "BOARD") {
-            board_info = {
-                x: x1 + width / 2,
-                y: y1 + height / 2,
-                width,
-                height
-            }
-        }
-        else {
-            pieces.push({
-                type: class_name,
-                width,
-                height,
-                x: x1 + width / 2,
-                y: y1 + height / 2
-            })
-        }
-    }
-    return {board_info, pieces};
-}
-
-const parseRawBoardImage = async (model: tf.GraphModel, image:ImageBitmap) => {
-    tf.engine().startScope()
-    const canvas = new OffscreenCanvas(512, 512);
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(image, 0, 0);
-    const input = tf.image.resizeBilinear(tf.browser.fromPixels(image), [512, 512])
-        .div(255.0).expandDims(0);
-    const res: any = <any>await model.executeAsync(input);
-    input.dispose();
-    const boxes = res[0].arraySync()[0];
-    const classes = res[2].arraySync()[0];
-    const entries = res[3].arraySync()[0];
-    for(let tensor of res){
-        tensor.dispose();
-    }
-    tf.engine().endScope();
-    return {boxes,classes,entries}
-}
-
 let last_board:string[][];
 let last_moved_cache:string;
-async function parseBoardImage(model: tf.GraphModel, image: ImageBitmap) {
-    const {boxes,classes,entries} = await parseRawBoardImage(model,image);
-    let {board_info, pieces} = await parseTensorResults(entries, boxes, classes);
+async function parseBoardImage(detector: OnnxChessDetector, image: ImageBitmap) {
+    // Use ONNX detector to get board and pieces
+    const detection = await detector.detect(image);
+
+    // Convert to legacy format (remove score field for compatibility)
+    const board_info: boardLocation | null = detection.board_info ? {
+        x: detection.board_info.x,
+        y: detection.board_info.y,
+        width: detection.board_info.width,
+        height: detection.board_info.height
+    } : null;
+
+    const pieces: piece[] = detection.pieces.map(p => ({
+        type: p.type,
+        x: p.x,
+        y: p.y,
+        width: p.width,
+        height: p.height
+    }));
+
     console.log(board_info);
     console.log(pieces);
+
     if(!board_info){
         return null;
     }
@@ -263,8 +232,8 @@ const frameToBitmap = async (frame: any): Promise<ImageBitmap> => {
 }
 
 async function main() {
-    const url = chrome.runtime.getURL("model/my-model.json");
-    let model:tf.GraphModel = await tf.loadGraphModel(url);
+    let detector: OnnxChessDetector | null = null;
+
     chrome.runtime.onMessage.addListener(async (data, sender) => {
         if (data == "toggle") {
             const curr = await chrome.storage.local.get("enabled")
@@ -272,15 +241,21 @@ async function main() {
                 chrome.tabs.sendMessage(tabs[0].id, "toggle", function (response) { });
             });
             if(!curr.enabled){
-                model = await tf.loadGraphModel(url);
+                // Load ONNX model when enabling detection
+                detector = new OnnxChessDetector();
+                await detector.loadModel();
             }
             else{
-                model = null;
+                // Dispose model when disabling
+                if (detector) {
+                    await detector.dispose();
+                    detector = null;
+                }
             }
             await chrome.storage.local.set({
                 enabled: !curr.enabled,
             });
-        }    
+        }
         if(data == "eval"){
             const curr = await chrome.storage.local.get("evaluating")
             await chrome.storage.local.set({
@@ -300,8 +275,12 @@ async function main() {
             });
         }
         else{
+            if (!detector) {
+                console.warn('[Background] Detector not loaded');
+                return;
+            }
             const bitmap = await frameToBitmap(data.frame);
-            const result = await parseBoardImage(model, bitmap);
+            const result = await parseBoardImage(detector, bitmap);
             if(!result){
                 return;
             }

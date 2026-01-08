@@ -1,4 +1,5 @@
 const path = require('path');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   entry: {
@@ -10,18 +11,39 @@ module.exports = {
   output: {
     filename: '[name].js',
     path: path.resolve(__dirname, 'dist'),
-   clean: true,
+    clean: true,
+  },
+  resolve: {
+    extensions: ['.ts', '.js'],
+    fallback: {
+      'fs': false,
+      'path': false,
+      'crypto': false,
+    }
   },
   module: {
     rules: [
       {
         test: /\.ts?$/,
         use: [
-          // [style-loader](/loaders/style-loader)
           { loader: 'ts-loader' }
-          // [css-loader](/loaders/css-loader
         ]
+      },
+      {
+        test: /\.wasm$/,
+        type: 'asset/resource',
       }
     ]
-  }
+  },
+  plugins: [
+    // Copy ONNX Runtime WASM files to dist
+    new CopyPlugin({
+      patterns: [
+        {
+          from: 'node_modules/onnxruntime-web/dist/*.wasm',
+          to: '[name][ext]'
+        },
+      ],
+    }),
+  ],
 };
